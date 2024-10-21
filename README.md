@@ -134,11 +134,11 @@ __Preseeding__ позволяет задать ответы на вопросы,
 ```
 echo '#_preseed_V1' > preseed.cfg
 debconf-get-selections --installer >> preseed.cfg
-debconf-get-selections
+debconf-get-selections >> preseed.cfg
 ```
 > [!IMPORTANT] 
 > Скопируйте все соответствующие значения из вывода этих команд и добавьте их в свой пользовательский файл preseed.cfg . Не работайте с файлом preseed.cfg, сгенерированным `debconf-get-selections --installer`, 
-> а извлеките из него значения и измените ими пример файла preseed.
+> а извлеките из него значения и измените ими пример файла _preseed_.
 
 В данной работе я установил вручную Debian Bookworm на виртуальной машине, сохранил параметры установки в файл и отредактировал в соответствии со своими потребностями скачанный ранее стандартный _preseed.cfg_ для _Debian Bookworm_.
 
