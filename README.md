@@ -12,7 +12,7 @@
 Для настройки загрузки машин с помощью сетевой карты и дальнейшей автоматической установки операционной системы будем использовать стенд с виртуальной моделью офисной сети, 
 который использовался в предыдущих работах - [Архитектура сетей](https://github.com/spanishairman/networksdebian) и [Настройка базовых правил фильтрации сетевых пакетов](https://github.com/spanishairman/iptables-debian).
 Схема офисной сети:
-[!Схема сети](MyNetworks-AutoInstall.drawio.png)
+![Схема сети](MyNetworks-AutoInstall.drawio.png)
 
 Здесь мы добавили виртуальный хост _AutoInstalled Server_ в сеть _vagrant-libvirt-central1 (VeryIsolated) 192.168.2.0/27_, а на виртуальной машине _centralServer_ создали службы _DHCP_, _TFTP_ и _HTTP_. 
 
@@ -212,10 +212,10 @@ debconf-get-selections
 Развернём офисную сеть с помощью `vagrant up` и запустим виртуальную машину с загрузкой по сети. Скриншоты загрузки и автоматической установки прилагаю далее по тексту:
 
 Получение ip-адреса и загрузчика по протоколу TFTP:
-[!dhcpclient1.png](dhcpclient1.png)
+![dhcpclient1.png](dhcpclient1.png)
 
 Выбор пункта меню _Automated install_:
-[!dhcpclient2.png](dhcpclient2.png)
+![dhcpclient2.png](dhcpclient2.png)
 
 Автоматическая установка операционной системы:
-[!dhcpclient3.png](dhcpclient3.png)
+![dhcpclient3.png](dhcpclient3.png)
