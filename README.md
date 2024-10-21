@@ -47,7 +47,7 @@ virt-install \
 После включения, виртуальная машина должна получить сетевой адрес и параметры, необходимые для получения загрузчива, для этого требуется настройка DHCP-сервера. В нашем случае, мы будем использовать _isc-dhcp-server_ со следующими настройками:
 ```
 option domain-name "local";
-option domain-name-servers 192.168.121.1;
+option domain-name-servers 8.8.8.8;
 
 default-lease-time 600;
 max-lease-time 7200;
@@ -99,6 +99,10 @@ if substring (option vendor-class-identifier, 0, 3) = "d-i" {
 ```
 указывает DHCP-клиентам, которые идентифицируются как _Debian Installer_ расположение файла с предопределёнными параметрами для автоматической установки операционной системы. Это будет рассмотрено далее.
 
+> [!IMPORTANT]
+> Обратите внимание на опцию _domain-name-servers_ - здесь мы указываем общедоступный сервер имен виесто стандартной настройки, которая указывает на ip-адрес сетевого интерфейса хостовой машины.
+> Эта настройка необходима, так как для запуска машины с сетевой загрузкой мы используем только один сетевой адаптер, который не подключен к хосту интерфейсом _mgmt_.
+
 ##### TFTP
 Параметры для демона _TFTP_ располагаются в файле _/etc/default/tftpd-hpa_. Здесь нам не придётся ничего менять, единственный интересующий нас парамеьтр, это каталог для размещаемых файлов:
 ```
@@ -142,3 +146,76 @@ debconf-get-selections
 > Пароли учётных записей в файле _preseed.cfg_ можно хранить как в виде открытого текста, так и зашифрованом виде с использованием хэша _crypt_. Чтобы получить зашифрованный хэш, используйте команду `mkpasswd -m sha-512` из набора утилит _whois_.
 > Таким образом, строка с зашифрованным паролем пользователя _root_ примет вид `d-i passwd/root-password-crypted password $6$bYRYbRhhjhUczn4J$p3gjHQ2OQItPaQMMzkU12tsXH83BJlJG8Gk3GMGMz4It5s4TeuNwQXPyoj3fz6FbVPpp2K8CdluLQsElpxIig/`
 
+После выполнения всех настроек блок [Vagrantfile](Vagrantfile), отвечющий за виртуальную машины _centralServer_ выглядит следующим образом:
+```
+  config.vm.define "Debian12-centralServer" do |centralserver|
+  centralserver.vm.box = "/home/max/vagrant/images/debian12"
+  centralserver.vm.network :private_network,
+       :type => 'ip',
+       :libvirt__forward_mode => 'veryisolated',
+       :libvirt__dhcp_enabled => false,
+       :ip => '192.168.2.2',
+       :libvirt__netmask => '255.255.255.224',
+       :libvirt__network_name => 'vagrant-libvirt-central1',
+       :libvirt__always_destroy => false
+  centralserver.vm.provider "libvirt" do |lvirt|
+      lvirt.memory = "1024"
+      lvirt.cpus = "1"
+      lvirt.title = "Debian12-centralServer"
+      lvirt.description = "Виртуальная машина на базе дистрибутива Debian Linux. centralServer"
+      lvirt.management_network_name = "vagrant-libvirt-mgmt"
+      lvirt.management_network_address = "192.168.121.0/24"
+      lvirt.management_network_keep = "true"
+      lvirt.management_network_mac = "52:54:00:27:28:89"
+  #   lv.storage :file, :size => '1G', :device => 'vdb', :allow_existing => false
+  end
+  centralserver.vm.provision "file", source: "dhcp/dhcpd.conf", destination: "~/dhcpd.conf"
+  centralserver.vm.provision "file", source: "dhcp/isc-dhcp-server", destination: "~/isc-dhcp-server"
+  centralserver.vm.provision "file", source: "dhcp/preseed.cfg", destination: "~/preseed.cfg"
+  centralserver.vm.provision "shell", inline: <<-SHELL
+      brd='*************************************************************'
+      echo "$brd"
+      echo 'Set Hostname'
+      hostnamectl set-hostname centralserver
+      echo "$brd"
+      sed -i 's/debian12/centralserver/' /etc/hosts
+      sed -i 's/debian12/centralserver/' /etc/hosts
+      echo "$brd"
+      echo 'Изменим ttl для работы через раздающий телефон'
+      echo "$brd"
+      sysctl -w net.ipv4.ip_default_ttl=66
+      echo "$brd"
+      echo 'Если ранее не были установлены, то установим необходимые  пакеты'
+      echo "$brd"
+      apt update
+      export DEBIAN_FRONTEND=noninteractive
+      apt install -y traceroute nginx tftpd-hpa isc-dhcp-server
+      cp -p /etc/default/isc-dhcp-server $_.bak
+      cp -p /etc/dhcp/dhcpd.conf $_.bak
+      cp /home/vagrant/isc-dhcp-server /etc/default/
+      cp /home/vagrant/dhcpd.conf /etc/dhcp/
+      systemctl start isc-dhcp-server.service
+      mkdir /var/www/auto
+      chown -R www-data: /var/www/auto
+      sed -i 's/root \\/var\\/www\\/html;/root \\/var\\/www\\/auto;/' /etc/nginx/sites-enabled/default
+      cp /home/vagrant/preseed.cfg /var/www/auto/
+      systemctl restart nginx
+      wget --directory-prefix=/home/vagrant/ https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/netboot.tar.gz
+      tar -xzvf /home/vagrant/netboot.tar.gz -C /srv/tftp
+      ip route del default
+      ip route add default via 192.168.2.1
+      ip route save > /etc/my-routes
+      echo 'up ip route restore < /etc/my-routes' >> /etc/network/interfaces
+      SHELL
+  end
+```
+Развернём офисную сеть с помощью `vagrant up` и запустим виртуальную машину с загрузкой по сети. Скриншоты загрузки и автоматической установки прилагаю далее по тексту:
+
+Получение ip-адреса и загрузчика по протоколу TFTP:
+[!dhcpclient1.png](dhcpclient1.png)
+
+Выбор пункта меню _Automated install_:
+[!dhcpclient2.png](dhcpclient2.png)
+
+Автоматическая установка операционной системы:
+[!dhcpclient3.png](dhcpclient3.png)
