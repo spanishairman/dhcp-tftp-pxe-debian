@@ -117,7 +117,7 @@ TFTP_DIRECTORY="/srv/tftp"
 TFTP_ADDRESS=":69"
 TFTP_OPTIONS="--secure"
 ```
-Для возможности загрузки клиентов потребуется скачать со страницы загрузки [debian.org](https://www.debian.org/distrib/netinst#netboot) и распаковать его в каталог TFTP сервера. 
+Для возможности загрузки клиентов потребуется скачать со страницы загрузки [debian.org](https://www.debian.org/distrib/netinst#netboot) минимальный образ для сетевой установки - _netinst_ и распаковать его в каталог TFTP сервера. 
 См. раздел __Set up TFTP server__ на странице [документации](https://wiki.debian.org/PXEBootInstall#Set_up_TFTP_server).
 
 За это действие отвечает следующий блок настроек из [Vagrantfile](Vagrantfile):
